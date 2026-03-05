@@ -73,7 +73,7 @@ class MonteCarlo:
         avg_performance_pct, max_drawdown_percent, least_performance_pct, avg_percent_change_per_trade, avg_value_history = self.get_avg_stats(value_histories)
         print(f"Max drawdown: -{max_drawdown_percent*100}%")
         print(f"Worst performance: {least_performance_pct*100}%")
-        print(f"Avg. % gain per trade: {avg_percent_change_per_trade*100}")
+        print(f"Avg. gain per trade: {avg_percent_change_per_trade*100}%")
         print(f"Winrate: {100*len([i for i in self.trades if i.is_winning])/len(self.trades)}%")
         print(f"Average performance: {avg_performance_pct*100}%")
         for history in value_histories:
