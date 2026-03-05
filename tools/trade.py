@@ -14,7 +14,7 @@ class Trade:
         position_size: float, # the % of your cash that goes into this trade (e.g. 0.2)
         take_profit: float, # e.g. input 0.05 for 5%
         stop_loss: float, # e.g. input 0.03 for 3%
-        expiration: datetime.datetime = None
+        expiration: datetime = None
     ):
         self.ticker = ticker
         self.enter_date = enter_date
@@ -38,21 +38,21 @@ class Trade:
         self.pct_change = self.raw_pct_change*self.position_size
 
     # Close this trade, rendering it unresponsive to update() calls
-    def close(self, current_price: float, close_date: datetime.datetime):
+    def close(self, current_price: float, close_date: datetime):
         self.is_closed = True
         self.set_percents(current_price)
         self.close_price = current_price
         self.close_date = close_date
-        if self.percent_change > 0:
+        if self.pct_change > 0:
             self.is_winning = True
         else:
             self.is_winning = False
 
-    def update(self, current_price: float, date: datetime.datetime):
+    def update(self, current_price: float, date: datetime):
         if self.is_closed:
             return
         
-        self.set_percents()
+        self.set_percents(current_price)
         if (self.raw_pct_change > self.take_profit) or (self.raw_pct_change < -self.stop_loss):
             self.close(current_price, date)
         elif self.expiration != None and date > self.expiration:
