@@ -72,10 +72,10 @@ class MonteCarlo:
         value_histories: np.ndarray = self.run_many(num_runs)
         avg_performance_pct, max_drawdown_percent, least_performance_pct, avg_percent_change_per_trade, avg_value_history = self.get_avg_stats(value_histories)
         print(f"Max drawdown: -{max_drawdown_percent*100}%")
-        print(f"Worst performance: {least_performance_pct*100}%")
-        print(f"Avg. gain per trade: {avg_percent_change_per_trade*100}%")
+        print(f"Worst performance: {least_performance_pct*100-100}%")
+        print(f"Avg. adj. gain per trade: {avg_percent_change_per_trade*100}%")
         print(f"Winrate: {100*len([i for i in self.trades if i.is_winning])/len(self.trades)}%")
-        print(f"Average performance: {avg_performance_pct*100}%")
+        print(f"Average performance: {avg_performance_pct*100-100}%")
         for history in value_histories:
             plt.plot(history, alpha=0.1)
         plt.plot(avg_value_history)

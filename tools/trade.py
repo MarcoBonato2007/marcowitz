@@ -1,20 +1,18 @@
-from datetime import datetime
 import pandas as pd
 from typing import Literal, Callable
-
 
 # Represents a single trade
 class Trade:
     def __init__(
         self, 
         ticker: str,
-        enter_date: datetime,
+        enter_date: str,
         order_type: Literal["Long", "Short"],
         enter_price: float,
         position_size: float, # the % of your cash that goes into this trade (e.g. 0.2)
         take_profit: float, # e.g. input 0.05 for 5%
         stop_loss: float, # e.g. input 0.03 for 3%
-        expiration: datetime = None
+        expiration: str = None
     ):
         self.ticker = ticker
         self.enter_date = enter_date
@@ -23,6 +21,8 @@ class Trade:
         self.position_size = position_size
         self.take_profit = take_profit
         self.stop_loss = stop_loss
+        self.take_profit_price = self.enter_price*(1+take_profit)
+        self.stop_loss_price = self.enter_price*(1-stop_loss)
         self.raw_pct_change: float = 0 # e.g. (most recent price-enter price) / enter price (if long)
         self.pct_change: float = 0 # adjusted for position size
         self.expiration = expiration
@@ -38,7 +38,7 @@ class Trade:
         self.pct_change = self.raw_pct_change*self.position_size
 
     # Close this trade, rendering it unresponsive to update() calls
-    def close(self, current_price: float, close_date: datetime):
+    def close(self, current_price: float, close_date: str):
         self.is_closed = True
         self.set_percents(current_price)
         self.close_price = current_price
@@ -48,7 +48,23 @@ class Trade:
         else:
             self.is_winning = False
 
-    def update(self, current_price: float, date: datetime):
+    # Pass in a standard dataframe
+    # Finds where stop loss / take profit is hit
+    def simulate(self, df):
+        df = df[df["date"] >= self.enter_date]
+        tp = df[(df["low"] <= self.take_profit_price) & (df["high"] >= self.take_profit_price)]
+        sl = df[(df["low"] <= self.stop_loss_price) & (df["high"] >= self.stop_loss_price)]
+        sl_date = None
+        tp_date = None
+        if len(sl) >= 1: sl_date = sl.iat[-1, 0]
+        if len(tp) >= 1: tp_date = tp.iat[-1, 0]
+        if (sl_date == None and tp_date == None): pass # no sl or tp ever hit
+        elif (sl_date != None and (tp_date == None or sl_date < tp_date)):
+            self.close(self.stop_loss_price, sl_date)
+        else:
+            self.close(self.take_profit_price, tp_date)
+
+    def update(self, current_price: float, date: str):
         if self.is_closed:
             return
         
@@ -66,26 +82,17 @@ class Trade:
 # each month checking if a trade should be made. Trades are kept track of.
 # Only trades that are closed are returned.
 def get_trades(df, judge: Callable[[pd.DataFrame], Trade | None]):
-    closed_trades: list[Trade] = []
-    active_trades: list[Trade] = []
+    all_trades: list[Trade] = []
 
     for i in range(len(df)-1, -1, -30):
-        new_trades = [] # new active trades
         cur_df = df.iloc[i:]
-
-        for t in active_trades:
-            t.update(
-                cur_df.iloc[0]["price"],
-                datetime.strptime(cur_df.iloc[0]["date"], '%Y-%m-%d')
-            )
-            if t.is_closed:
-                closed_trades.append(t)
-            else:
-                new_trades.append(t)
-
         if (res := judge(cur_df)):
-            new_trades.append(res)
+            all_trades.append(res)
 
-        active_trades = new_trades
+    out = []
+    for t in all_trades:
+        t.simulate(df)
+        if t.is_closed:
+            out.append(t)
 
-    return closed_trades
+    return out
